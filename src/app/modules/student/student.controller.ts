@@ -1,14 +1,34 @@
 import { Request, Response } from "express";
 import { studentServices } from "./student.service";
+import studentJoiValidationSchema from "./student.validation";
+
 
 const createStudent = async (req: Request, res: Response) =>{
 
     try {
+        // creating a schema validation using Joy 
+       
+          
+
+
         const {student: studentData} = req.body;
+          
+
+        const {error} = studentJoiValidationSchema.validate(studentData); 
+        const result = await studentServices.createStudentInToDB(studentData);
+
+
+        if(error){
+            res.status(500).json({
+                success: false,
+                message: 'something went wrong',
+                error: error.details
+            })
+        }
+
 
     // will call service func to send this data  
 
-    const result = await studentServices.createStudentInToDB(studentData);
     // send response 
     res.status(200).json({
         success: true,
@@ -16,7 +36,13 @@ const createStudent = async (req: Request, res: Response) =>{
         data: result
     })
     } catch (error) {
-        console.log(error)
+       res.status(500).json({
+        success: false,
+        message: "Something went wrong",
+        error: error,
+       
+       })
+       console.log(error)
     }
 };
 
