@@ -1,13 +1,16 @@
 import { Schema, model } from 'mongoose';
 import validator from 'validator';
 import {
-  Guardian,
-  LocalGurdian,
-  Student,
-  UserName,
+  StudentModel,
+  TGuardian,
+  TLocalGurdian,
+  TStudent,
+  TUserName,
 } from './student/student.interface';
+import bcrypt from 'bcrypt';
+import config from '../config';
 
-const userNameSchema = new Schema<UserName>({
+const userNameSchema = new Schema<TUserName>({
   firstName: {
     type: String,
     required: [true, 'First name is required'],
@@ -36,7 +39,7 @@ const userNameSchema = new Schema<UserName>({
   },
 });
 
-const guardianSchema = new Schema<Guardian>({
+const guardianSchema = new Schema<TGuardian>({
   fatherName: {
     type: String,
     required: [true, "Father's name is required"],
@@ -69,7 +72,7 @@ const guardianSchema = new Schema<Guardian>({
   },
 });
 
-const localGuardianSchema = new Schema<LocalGurdian>({
+const localGuardianSchema = new Schema<TLocalGurdian>({
   name: {
     type: String,
     required: [true, "Local guardian's name is required"],
@@ -91,12 +94,19 @@ const localGuardianSchema = new Schema<LocalGurdian>({
     trim: true,
   },
 });
+// const studentSchema = new Schema<TStudent, StudentModel, StudentModthods>({
 
-const studentSchema = new Schema<Student>({
+const studentSchema = new Schema<TStudent, StudentModel>({
   id: {
     type: String,
     required: [true, 'Student ID is required'],
     unique: true,
+  },
+  password: {
+    type: String,
+    required: [true, 'Student Password is required'],
+    unique: true,
+    maxlength: [20, "password can't be 20 character"],
   },
   name: {
     type: userNameSchema,
@@ -112,14 +122,15 @@ const studentSchema = new Schema<Student>({
     required: [true, 'Gender is required'],
   },
   dateOfBirth: { type: String, required: [true, 'Date of birth is required'] },
-  email: { type: String,
-  required: [true, 'Email is required'],
-  unique: true,
-  validate: {
-    validator: (value: string) =>  validator.isEmail(value),
-    message: "{VALUE} is not valid email type"
+  email: {
+    type: String,
+    required: [true, 'Email is required'],
+    unique: true,
+    validate: {
+      validator: (value: string) => validator.isEmail(value),
+      message: '{VALUE} is not valid email type',
+    },
   },
- },
 
   contactNumber: {
     type: String,
@@ -158,4 +169,37 @@ const studentSchema = new Schema<Student>({
     default: 'active',
   },
 });
-export const StudentModel = model<Student>('Student', studentSchema);
+
+// pre save middleware / hook : will work on  create() save()
+studentSchema.pre('save', async function (next) {
+  // console.log(this, "pre hook: we will save data ")
+  // eslint-disable-next-line @typescript-eslint/no-this-alias
+  const user = this;
+  // hashing password and save into db
+
+  user.password = await bcrypt.hash(
+    user.password,
+    Number(config.bcrypt_sold_rounds),
+  );
+  next();
+});
+
+// pre save middleware / hook
+studentSchema.post('save', function () {
+  console.log(this, 'post hook: we our data  ');
+});
+
+// creating a custom static method
+
+studentSchema.statics.isUseExists = async function (id: string) {
+  const existingUser = await Student.findOne({ id });
+  return existingUser;
+};
+
+// creating a custom instance method
+// studentSchema.methods.isUserExists = async function(id: string){
+//   const existingUser = await Student.findOne({id});
+//   return existingUser
+// }
+
+export const Student = model<TStudent, StudentModel>('Student', studentSchema);
