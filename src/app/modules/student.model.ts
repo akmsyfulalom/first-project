@@ -105,7 +105,7 @@ const studentSchema = new Schema<TStudent, StudentModel>({
   password: {
     type: String,
     required: [true, 'Student Password is required'],
-    unique: true,
+
     maxlength: [20, "password can't be 20 character"],
   },
   name: {
@@ -168,13 +168,17 @@ const studentSchema = new Schema<TStudent, StudentModel>({
     enum: ['active', 'blocked'],
     default: 'active',
   },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // pre save middleware / hook : will work on  create() save()
 studentSchema.pre('save', async function (next) {
   // console.log(this, "pre hook: we will save data ")
   // eslint-disable-next-line @typescript-eslint/no-this-alias
-  const user = this;
+  const user = this; // document
   // hashing password and save into db
 
   user.password = await bcrypt.hash(
@@ -185,9 +189,26 @@ studentSchema.pre('save', async function (next) {
 });
 
 // pre save middleware / hook
-studentSchema.post('save', function () {
-  console.log(this, 'post hook: we our data  ');
+studentSchema.post('save', function (doc, next) {
+  doc.password = '';
+  next();
 });
+
+// query middleware
+studentSchema.pre('find', function (next) {
+  this.find({ isDeleted: { $ne: true } });
+  next();
+});
+studentSchema.pre('findOne', function (next) {
+  this.find({ isDeleted: { $ne: true } });
+  next();
+});
+
+studentSchema.pre('aggregate', function (next) {
+  this.pipeline().unshift({$match: {isDeleted: {$ne: true}}});
+  next();
+});
+
 
 // creating a custom static method
 

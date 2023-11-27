@@ -42,6 +42,7 @@ const userNameZodValidationSchema = z.object({
     localGurdian: localGuardianZodValidationSchema,
     profileImg: z.string().optional(),
     isActive: z.enum(['active', 'blocked']).default('active'),
+    isDeleted: z.boolean()
   });
 
 
